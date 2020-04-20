@@ -27,6 +27,7 @@ contract ERC2608 is ERC20, IERC2608 {
         wallet.makeApprove(to, amount);
         wallet.makeCall.value(msg.value)(to, msg.value, data);
 
+        // Send unused amount back
         uint256 remainder = balanceOf(address(wallet));
         if (remainder > 0) {
             _transfer(address(wallet), msg.sender, remainder);
