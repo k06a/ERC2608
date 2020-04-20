@@ -779,7 +779,7 @@ pragma solidity ^0.5.0;
 
 contract ERC2608 is ERC20, IERC2608 {
 
-    mapping(address => address) private _walletOf;
+    mapping(address => address payable) private _walletOf;
 
     function walletOf(address user) public view returns(address) {
         return address(_walletOf[user]);
@@ -792,14 +792,21 @@ contract ERC2608 is ERC20, IERC2608 {
     function transferAndCall(address to, uint256 amount, bytes memory data) public payable returns(bool) {
         IERC2608Wallet wallet = _getWalletOrCreateIfNeeded(msg.sender);
         _transfer(msg.sender, address(wallet), amount);
+
         wallet.makeApprove(to, amount);
         wallet.makeCall.value(msg.value)(to, msg.value, data);
+
+        uint256 remainder = balanceOf(address(wallet));
+        if (remainder > 0) {
+            _transfer(address(wallet), msg.sender, remainder);
+        }
     }
 
     function _getWalletOrCreateIfNeeded(address user) internal returns(IERC2608Wallet) {
-        address wallet = _walletOf[user];
+        address payable wallet = _walletOf[user];
         if (wallet == address(0)) {
             wallet = Create2.deploy(bytes32(uint256(user)), type(ERC2608Wallet).creationCode);
+            ERC2608Wallet(wallet).transferOwnership(user);
             _walletOf[user] = wallet;
         }
         return IERC2608Wallet(wallet);
